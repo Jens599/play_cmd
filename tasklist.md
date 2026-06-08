@@ -20,23 +20,23 @@
 
 ## Phase 2: mpv Playback Parity
 
-- [ ] Implement player resolution from configured path.
-- [ ] Implement fallback player lookup for `mpv`, `mpvnet.com`, and `mpvnet.exe`.
-- [ ] Implement local mpv.net lookup under `%LOCALAPPDATA%\Programs\mpv.net`.
-- [ ] Implement URL validation for HTTP/HTTPS URLs.
-- [ ] Implement quality/format mapping.
-- [ ] Implement size/window argument mapping.
-- [ ] Implement audio-only argument handling.
-- [ ] Implement loop argument handling.
-- [ ] Implement hardware acceleration argument handling.
-- [ ] Implement background playback process launch.
-- [ ] Implement reverse playlist arguments.
-- [ ] Implement subtitle language and no-subtitle handling.
-- [ ] Implement custom mpv argument passthrough.
-- [ ] Implement dry-run command preview.
-- [ ] Add tests for mpv argument generation.
-- [ ] Add tests for player resolution ordering.
-- [ ] Verify direct URL dry-run playback command.
+- [x] Implement player resolution from configured path.
+- [x] Implement fallback player lookup for `mpv`, `mpvnet.com`, and `mpvnet.exe`.
+- [x] Implement local mpv.net lookup under `%LOCALAPPDATA%\Programs\mpv.net`.
+- [x] Implement URL validation for HTTP/HTTPS URLs.
+- [x] Implement quality/format mapping.
+- [x] Implement size/window argument mapping.
+- [x] Implement audio-only argument handling.
+- [x] Implement loop argument handling.
+- [x] Implement hardware acceleration argument handling.
+- [x] Implement background playback process launch.
+- [x] Implement reverse playlist arguments.
+- [x] Implement subtitle language and no-subtitle handling.
+- [x] Implement custom mpv argument passthrough.
+- [x] Implement dry-run command preview.
+- [x] Add tests for mpv argument generation.
+- [x] Add tests for player resolution ordering.
+- [x] Verify direct URL dry-run playback command.
 
 ## Phase 3: Search Parity
 

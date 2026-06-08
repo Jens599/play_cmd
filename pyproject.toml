@@ -1,0 +1,47 @@
+[project]
+name = "play-cmd"
+version = "0.1.0"
+description = "Terminal-first mpv and yt-dlp launcher with a modern TUI."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "platformdirs>=4.3.0",
+    "pydantic>=2.11.0",
+    "pyperclip>=1.9.0",
+    "rich>=14.0.0",
+    "textual>=3.0.0",
+    "typer>=0.16.0",
+]
+
+[project.scripts]
+play = "play_cmd.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.16.0",
+    "pyinstaller>=6.14.0",
+    "pytest>=8.4.0",
+    "pytest-cov>=6.1.0",
+    "ruff>=0.11.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9.0"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.table import Table
 
 from play_cmd.config import read_config, reset_config, save_config
-from play_cmd.models import AppConfig, StreamFormat, WindowSize
+from play_cmd.models import AppConfig, ResultType, SearchResult, StreamFormat, WindowSize
 from play_cmd.mpv import (
     PlaybackOptions,
     PlayerNotFoundError,
@@ -20,6 +20,7 @@ from play_cmd.mpv import (
     validate_http_url,
 )
 from play_cmd.paths import config_path, history_path
+from play_cmd.search import SearchError, YtdlpNotFoundError, search_youtube
 
 console = Console()
 app = typer.Typer(
@@ -36,6 +37,39 @@ def print_config(config: AppConfig) -> None:
     for key, value in config.model_dump(mode="json").items():
         table.add_row(key, str(value))
     console.print(table)
+
+
+def select_search_result(results: list[SearchResult], title: str) -> SearchResult | None:
+    table = Table(title=title, show_header=True, header_style="bold cyan")
+    table.add_column("No", justify="right")
+    table.add_column("Type")
+    table.add_column("Length")
+    table.add_column("Views", justify="right")
+    table.add_column("Uploader")
+    table.add_column("Title")
+    for index, result in enumerate(results, start=1):
+        table.add_row(
+            str(index),
+            result.type.value,
+            result.duration or "-",
+            str(result.view_count or "-"),
+            result.uploader or "-",
+            result.title,
+        )
+    console.print(table)
+
+    answer = typer.prompt("Select number or press Enter to cancel", default="", show_default=False)
+    if not answer.strip():
+        return None
+    try:
+        selected_index = int(answer)
+    except ValueError:
+        console.print("[red]Invalid selection.[/red]")
+        return None
+    if selected_index < 1 or selected_index > len(results):
+        console.print("[red]Invalid selection.[/red]")
+        return None
+    return results[selected_index - 1]
 
 
 @app.callback(invoke_without_command=True)
@@ -55,6 +89,22 @@ def play(
         typer.Option("--cookie-path", "-c", help="Path to cookies.txt."),
     ] = None,
     search: Annotated[bool, typer.Option("--search", "-s", help="Search YouTube.")] = False,
+    playlist: Annotated[
+        bool,
+        typer.Option("--playlist", "-p", help="Search for playlists only."),
+    ] = False,
+    first: Annotated[
+        bool,
+        typer.Option("--first", help="Play the first search result without a picker."),
+    ] = False,
+    result_type: Annotated[
+        ResultType | None,
+        typer.Option("--type", "-t", help="Filter search results by type."),
+    ] = None,
+    max_results: Annotated[
+        int | None,
+        typer.Option("--max-results", help="Number of search results, from 1 to 50."),
+    ] = None,
     audio_only: Annotated[
         bool | None,
         typer.Option("--audio-only", "-a", help="Stream audio only."),
@@ -92,9 +142,36 @@ def play(
         console.print(ctx.get_help())
         raise typer.Exit
 
+    config_data = read_config()
+    final_cookie_path = cookie_path or config_data.cookie_path
+
     if search:
-        console.print("[yellow]Search playback is planned for Phase 3.[/yellow]")
-        raise typer.Exit(code=2)
+        try:
+            results = search_youtube(
+                target,
+                max_results=max_results or config_data.max_results,
+                playlist=playlist,
+                cookie_path=final_cookie_path,
+                result_type=result_type,
+            )
+        except YtdlpNotFoundError as error:
+            console.print(f"[red]{error}[/red]")
+            raise typer.Exit(code=1) from error
+        except SearchError as error:
+            console.print(f"[red]Search failed: {error}[/red]")
+            raise typer.Exit(code=1) from error
+
+        if not results:
+            console.print("[yellow]No search results found.[/yellow]")
+            raise typer.Exit(code=1)
+
+        selected = (
+            results[0] if first else select_search_result(results, f"Search Results: {target}")
+        )
+        if selected is None:
+            raise typer.Exit
+        target = selected.url
+        console.print(f"[cyan]Match [{selected.type.value}]:[/cyan] {selected.title}")
 
     try:
         target_url = validate_http_url(target)
@@ -102,8 +179,6 @@ def play(
         console.print(f"[red]{error}[/red]")
         raise typer.Exit(code=2) from error
 
-    config_data = read_config()
-    final_cookie_path = cookie_path or config_data.cookie_path
     options = PlaybackOptions(
         size=size or config_data.default_size,
         ytdl_format=ytdl_format or config_data.default_format,
@@ -172,8 +247,36 @@ def history() -> None:
 
 
 @app.command()
-def search(query: Annotated[str, typer.Argument(help="YouTube search query.")]) -> None:
-    console.print(f"Search is not implemented yet. Query: [cyan]{query}[/cyan]")
+def search(
+    query: Annotated[str, typer.Argument(help="YouTube search query.")],
+    playlist: Annotated[
+        bool,
+        typer.Option("--playlist", "-p", help="Search for playlists only."),
+    ] = False,
+    result_type: Annotated[
+        ResultType | None,
+        typer.Option("--type", "-t", help="Filter search results by type."),
+    ] = None,
+    max_results: Annotated[int, typer.Option("--max-results", help="Number of results.")] = 10,
+) -> None:
+    try:
+        results = search_youtube(
+            query,
+            max_results=max_results,
+            playlist=playlist,
+            result_type=result_type,
+        )
+    except YtdlpNotFoundError as error:
+        console.print(f"[red]{error}[/red]")
+        raise typer.Exit(code=1) from error
+    except SearchError as error:
+        console.print(f"[red]Search failed: {error}[/red]")
+        raise typer.Exit(code=1) from error
+
+    if not results:
+        console.print("[yellow]No search results found.[/yellow]")
+        return
+    select_search_result(results, f"Search Results: {query}")
 
 
 @app.command()

@@ -40,21 +40,21 @@
 
 ## Phase 3: Search Parity
 
-- [ ] Implement `yt-dlp` dependency check.
-- [ ] Implement YouTube search URL construction.
-- [ ] Implement playlist-only search parameter.
-- [ ] Implement `yt-dlp` flat-playlist command construction.
-- [ ] Implement cookie forwarding to `yt-dlp`.
-- [ ] Parse `yt-dlp` tab-separated search rows.
-- [ ] Detect result type: Video, Playlist, Channel.
-- [ ] Implement result type filtering.
-- [ ] Implement max result limiting.
-- [ ] Implement `--first` behavior.
-- [ ] Implement initial Rich table/basic picker fallback.
-- [ ] Add tests for row parsing.
-- [ ] Add tests for result type detection.
-- [ ] Add tests for filtering.
-- [ ] Verify `uv run play "lofi beats" --search --first --dry-run`.
+- [x] Implement `yt-dlp` dependency check.
+- [x] Implement YouTube search URL construction.
+- [x] Implement playlist-only search parameter.
+- [x] Implement `yt-dlp` flat-playlist command construction.
+- [x] Implement cookie forwarding to `yt-dlp`.
+- [x] Parse `yt-dlp` tab-separated search rows.
+- [x] Detect result type: Video, Playlist, Channel.
+- [x] Implement result type filtering.
+- [x] Implement max result limiting.
+- [x] Implement `--first` behavior.
+- [x] Implement initial Rich table/basic picker fallback.
+- [x] Add tests for row parsing.
+- [x] Add tests for result type detection.
+- [x] Add tests for filtering.
+- [x] Verify `uv run play "lofi beats" --search --first --dry-run`.
 
 ## Phase 4: History, Clipboard, Cookies
 

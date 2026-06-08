@@ -58,22 +58,22 @@
 
 ## Phase 4: History, Clipboard, Cookies
 
-- [ ] Implement clipboard text retrieval.
-- [ ] Implement history file path.
-- [ ] Implement history read/write.
-- [ ] Implement history de-dupe by URL.
-- [ ] Cap history at 50 entries.
-- [ ] Implement replay last history item.
-- [ ] Implement interactive history selection.
-- [ ] Implement cookie path precedence from config.
-- [ ] Implement explicit cookie path validation.
-- [ ] Save explicit cookie path to config.
-- [ ] Implement default cookie path lookup.
-- [ ] Add tests for history de-dupe and cap behavior.
-- [ ] Add tests for cookie path precedence.
-- [ ] Verify `uv run play --clipboard --dry-run`.
-- [ ] Verify `uv run play --last --dry-run`.
-- [ ] Verify `uv run play history`.
+- [x] Implement clipboard text retrieval.
+- [x] Implement history file path.
+- [x] Implement history read/write.
+- [x] Implement history de-dupe by URL.
+- [x] Cap history at 50 entries.
+- [x] Implement replay last history item.
+- [x] Implement interactive history selection.
+- [x] Implement cookie path precedence from config.
+- [x] Implement explicit cookie path validation.
+- [x] Save explicit cookie path to config.
+- [x] Implement default cookie path lookup.
+- [x] Add tests for history de-dupe and cap behavior.
+- [x] Add tests for cookie path precedence.
+- [x] Verify `uv run play --clipboard --dry-run`.
+- [x] Verify `uv run play --last --dry-run`.
+- [x] Verify `uv run play history`.
 
 ## Phase 5: Modern Textual TUI
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -133,13 +134,13 @@ def test_launch_player_uses_run_for_foreground(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_launch_player_uses_popen_for_background(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[tuple[list[str], bool]] = []
+    calls: list[tuple[list[str], dict[str, object]]] = []
 
     class FakeProcess:
         pass
 
-    def fake_popen(command: list[str], start_new_session: bool) -> FakeProcess:
-        calls.append((command, start_new_session))
+    def fake_popen(command: list[str], **kwargs: object) -> FakeProcess:
+        calls.append((command, kwargs))
         return FakeProcess()
 
     monkeypatch.setattr("play_cmd.mpv.subprocess.Popen", fake_popen)
@@ -150,4 +151,14 @@ def test_launch_player_uses_popen_for_background(monkeypatch: pytest.MonkeyPatch
         background=True,
     )
 
-    assert calls == [(["mpv", "--no-video", "https://example.com"], True)]
+    assert len(calls) == 1
+    command, kwargs = calls[0]
+    assert command == ["mpv", "--no-video", "https://example.com"]
+    assert kwargs["stdin"] is subprocess.DEVNULL
+    assert kwargs["stdout"] is subprocess.DEVNULL
+    assert kwargs["stderr"] is subprocess.DEVNULL
+    assert kwargs["start_new_session"] is True
+    if os.name == "nt":
+        assert kwargs["creationflags"] == (
+            subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        )

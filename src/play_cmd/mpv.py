@@ -6,6 +6,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from play_cmd.models import StreamFormat, WindowSize
@@ -142,7 +143,18 @@ def preview_command(command: list[str]) -> str:
 def launch_player(player: Player, args: list[str], background: bool = False) -> None:
     command = [player.command, *args]
     if background:
-        subprocess.Popen(command, start_new_session=True)  # noqa: S603
+        popen_kwargs: dict[str, Any] = {
+            "stdin": subprocess.DEVNULL,
+            "stdout": subprocess.DEVNULL,
+            "stderr": subprocess.DEVNULL,
+            "start_new_session": True,
+        }
+        if os.name == "nt":
+            popen_kwargs["creationflags"] = (
+                subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+            )
+
+        subprocess.Popen(command, **popen_kwargs)  # noqa: S603
         return
 
     subprocess.run(command, check=True)  # noqa: S603

@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+import subprocess
+import sys
 from typing import Annotated
 
 import typer
 from rich.console import Console
-from rich.panel import Panel
 from rich.table import Table
 
 from play_cmd.config import read_config, reset_config, save_config
-from play_cmd.models import AppConfig
+from play_cmd.models import AppConfig, StreamFormat, WindowSize
+from play_cmd.mpv import (
+    PlaybackOptions,
+    PlayerNotFoundError,
+    build_mpv_args,
+    launch_player,
+    preview_command,
+    require_player,
+    validate_http_url,
+)
 from play_cmd.paths import config_path, history_path
 
 console = Console()
@@ -32,7 +42,48 @@ def print_config(config: AppConfig) -> None:
 def play(
     ctx: typer.Context,
     target: Annotated[str | None, typer.Argument(help="URL or search query.")] = None,
+    size: Annotated[
+        WindowSize | None,
+        typer.Option("--size", "-sz", help="Window size preset."),
+    ] = None,
+    ytdl_format: Annotated[
+        StreamFormat | None,
+        typer.Option("--format", "-f", help="yt-dlp format preset."),
+    ] = None,
+    cookie_path: Annotated[
+        str | None,
+        typer.Option("--cookie-path", "-c", help="Path to cookies.txt."),
+    ] = None,
     search: Annotated[bool, typer.Option("--search", "-s", help="Search YouTube.")] = False,
+    audio_only: Annotated[
+        bool | None,
+        typer.Option("--audio-only", "-a", help="Stream audio only."),
+    ] = None,
+    background: Annotated[
+        bool | None,
+        typer.Option("--background", "-b", help="Run player in background."),
+    ] = None,
+    loop: Annotated[bool | None, typer.Option("--loop", "-l", help="Loop playback.")] = None,
+    hardware_accel: Annotated[
+        bool | None,
+        typer.Option("--hardware-accel", help="Enable hardware acceleration."),
+    ] = None,
+    reverse_playlist: Annotated[
+        bool | None,
+        typer.Option("--reverse-playlist", "-r", help="Reverse playlist playback order."),
+    ] = None,
+    no_subtitles: Annotated[
+        bool | None,
+        typer.Option("--no-subtitles", help="Disable subtitle language preference."),
+    ] = None,
+    subtitle_language: Annotated[
+        list[str] | None,
+        typer.Option("--subtitle-language", help="Preferred subtitle language."),
+    ] = None,
+    mpv_argument: Annotated[
+        list[str] | None,
+        typer.Option("--mpv-argument", help="Extra mpv argument appended to launch."),
+    ] = None,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Preview without launching.")] = False,
 ) -> None:
     if ctx.invoked_subcommand is not None:
@@ -41,15 +92,60 @@ def play(
         console.print(ctx.get_help())
         raise typer.Exit
 
-    mode = "search" if search else "direct URL"
-    suffix = " dry run" if dry_run else ""
-    console.print(
-        Panel.fit(
-            f"Phase 1 scaffold only: received {mode}{suffix} target\n[cyan]{target}[/cyan]",
-            title="play",
-            border_style="cyan",
-        )
+    if search:
+        console.print("[yellow]Search playback is planned for Phase 3.[/yellow]")
+        raise typer.Exit(code=2)
+
+    try:
+        target_url = validate_http_url(target)
+    except ValueError as error:
+        console.print(f"[red]{error}[/red]")
+        raise typer.Exit(code=2) from error
+
+    config_data = read_config()
+    final_cookie_path = cookie_path or config_data.cookie_path
+    options = PlaybackOptions(
+        size=size or config_data.default_size,
+        ytdl_format=ytdl_format or config_data.default_format,
+        cookie_path=final_cookie_path,
+        audio_only=config_data.audio_only if audio_only is None else audio_only,
+        background=config_data.background if background is None else background,
+        loop=config_data.loop if loop is None else loop,
+        hardware_accel=config_data.hardware_accel if hardware_accel is None else hardware_accel,
+        reverse_playlist=(
+            config_data.reverse_playlist if reverse_playlist is None else reverse_playlist
+        ),
+        no_subtitles=config_data.no_subtitles if no_subtitles is None else no_subtitles,
+        subtitle_language=subtitle_language or config_data.subtitle_language,
+        custom_args=mpv_argument or [],
     )
+    mpv_args = build_mpv_args(options)
+
+    try:
+        player = require_player(config_data.player_path)
+    except PlayerNotFoundError as error:
+        console.print(f"[red]{error}[/red]")
+        raise typer.Exit(code=1) from error
+
+    command = [player.command, *mpv_args, target_url]
+    console.print("[green]Launching:[/green]")
+    console.print(f"  [yellow]{preview_command(command)}[/yellow]")
+
+    if dry_run:
+        console.print("[cyan]Dry run: player was not started.[/cyan]")
+        return
+
+    try:
+        launch_player(player, [*mpv_args, target_url], background=options.background)
+    except OSError as error:
+        console.print(f"[red]Failed to start player: {error}[/red]")
+        raise typer.Exit(code=1) from error
+    except subprocess.CalledProcessError as error:
+        console.print(f"[red]Player exited with code {error.returncode}.[/red]")
+        raise typer.Exit(code=1) from error
+
+    if options.background:
+        console.print("[green]Player started in background.[/green]")
 
 
 @app.command()
@@ -97,4 +193,13 @@ def doctor() -> None:
 
 
 def main() -> None:
-    app()
+    args = sys.argv[1:]
+    commands = {"config", "history", "search", "tui", "doctor"}
+    if args and args[0] not in commands and not args[0].startswith("-"):
+        target = args[0]
+        trailing = args[1:]
+        if any(arg.startswith("-") for arg in trailing):
+            app(args=[*trailing, target])
+            return
+
+    app(args=args)

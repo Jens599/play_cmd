@@ -23,11 +23,50 @@ from play_cmd.paths import config_path, history_path
 from play_cmd.search import SearchError, YtdlpNotFoundError, search_youtube
 
 console = Console()
+COMMANDS = {"config", "history", "search", "tui", "doctor"}
 app = typer.Typer(
     add_completion=False,
     no_args_is_help=True,
     help="Terminal-first mpv and yt-dlp launcher.",
 )
+
+
+def normalize_root_args(args: list[str]) -> list[str]:
+    if any(arg in COMMANDS for arg in args):
+        return args
+
+    target_index: int | None = None
+    skip_next = False
+    value_options = {
+        "--size",
+        "-sz",
+        "--format",
+        "-f",
+        "--cookie-path",
+        "-c",
+        "--type",
+        "-t",
+        "--max-results",
+        "--subtitle-language",
+        "--mpv-argument",
+    }
+
+    for index, arg in enumerate(args):
+        if skip_next:
+            skip_next = False
+            continue
+        if arg in value_options:
+            skip_next = True
+            continue
+        if arg.startswith("-"):
+            continue
+        target_index = index
+        break
+
+    if target_index is None or target_index == len(args) - 1:
+        return args
+
+    return [*args[:target_index], *args[target_index + 1 :], args[target_index]]
 
 
 def print_config(config: AppConfig) -> None:
@@ -296,13 +335,4 @@ def doctor() -> None:
 
 
 def main() -> None:
-    args = sys.argv[1:]
-    commands = {"config", "history", "search", "tui", "doctor"}
-    if args and args[0] not in commands and not args[0].startswith("-"):
-        target = args[0]
-        trailing = args[1:]
-        if any(arg.startswith("-") for arg in trailing):
-            app(args=[*trailing, target])
-            return
-
-    app(args=args)
+    app(args=normalize_root_args(sys.argv[1:]))
